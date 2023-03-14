@@ -23,7 +23,7 @@ int main() {
     char buffer[4096]{};
 
     while (true) {
-        std::cout << "Enter a number: " << buffer << std::endl;
+        std::cout << "Enter a number: " ;
         std::cin >> buffer;
         std::cin.get();
 
@@ -41,6 +41,6 @@ int main() {
             perror("recvfrom() ERROR");
             exit(4);
         }
-        std::cout << "Reply: " << buffer;
+        std::cout << "Reply: " << buffer << std::endl;
     }
 }
