@@ -12,12 +12,12 @@ int main() {
             .sin_port = htons(PORT)
     };
     if (inet_pton(AF_INET, IP, &server.sin_addr) <= 0) {
-        perror("inet_pton() ERROR");
+        std::cerr << "inet_pton() ERROR" << std::endl;
         exit(1);
     }
     const int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
-        perror("socket() ERROR");
+        std::cerr << "socket() ERROR" << std::endl;
         exit(2);
     }
     char buffer[4096]{};
@@ -30,7 +30,7 @@ int main() {
 
         socklen_t len = sizeof(server);
         if (sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr *) &server, len) < 0) {
-            perror("sendto() ERROR ");
+            std::cerr << "sendto() ERROR " << std::endl;
             exit(3);
         }
 
@@ -38,7 +38,7 @@ int main() {
         memset(buffer, 0, sizeof(buffer));
 
         if (recvfrom(sock, buffer, sizeof(buffer), 0, (struct sockaddr *) &from, &len) < 0) {
-            perror("recvfrom() ERROR");
+            std::cerr << "recvfrom() ERROR" << std::endl;
             exit(4);
         }
         std::cout << "Reply: " << buffer << std::endl;
