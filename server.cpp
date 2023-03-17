@@ -2,29 +2,25 @@
 #include <cstring>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <array>
+#include <stdexcept>
+#include <charconv>
 
 #define PORT 8080
 #define IP "127.0.0.1"
 
-bool charArrayToInt(char buf[], int &num) {
-    std::string str(buf);
-    int parsed;
-    try {
-        parsed = std::stoi(str);
-    }
-    catch (...) {
-        return false;
-    }
-    num = parsed;
-    return true;
-}
-
-bool isEven(int n) {
-    if (n % 2 == 0) {
+bool charArrayToInt(std::array<char, 4096> buf, int &num) {
+    std::string str(buf.data());
+    auto res = std::from_chars(str.data(), str.data() + str.size(), num);
+    if (res.ec == std::errc()){
         return true;
     } else {
         return false;
     }
+}
+
+bool isEven(int n) {
+    return !(n % 2);
 }
 
 int main() {
@@ -33,54 +29,48 @@ int main() {
             .sin_port = htons(PORT)
     };
     if (inet_pton(AF_INET, IP, &server.sin_addr) <= 0) {
-        perror("inet_pton() ERROR");
-        exit(1);
+        throw std::runtime_error("inet_pton() ERROR");
     }
 
     const int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if ((sock) < 0) {
-        perror("socket() ERROR");
-        exit(2);
+        throw std::runtime_error("socket() ERROR");
     }
-    char buffer[4096]{};
+    std::array<char, 4096> buffer{};
 
     socklen_t len = sizeof(server);
     if (bind(sock, (struct sockaddr *) &server, len) < 0) {
-        perror("bind() ERROR");
-        exit(3);
+        throw std::runtime_error("bind() ERROR");
     }
 
     while (true) {
         struct sockaddr_in client{};
-        memset(buffer, 0, sizeof(buffer));
+        buffer.fill(0);
         std::cout << "Waiting for connection..." << std::endl;
-        if (recvfrom(sock, buffer, sizeof(buffer), 0, (struct sockaddr *) &client, &len) < 0) {
-            perror("recvfrom() ERROR");
-            exit(4);
+        if (recvfrom(sock, buffer.data(), buffer.size(), 0, (struct sockaddr *) &client, &len) < 0) {
+            throw std::runtime_error("recvfrom() ERROR");
         }
 
         char buffer_ip[128]{};
         inet_ntop(AF_INET, &client.sin_addr, buffer_ip, sizeof(buffer_ip));
-        std::cout << "Message from client: " << buffer << std::endl;
+        std::cout << "Message from client: " << buffer.data() << std::endl;
         std::cout << "Client's ip: " << buffer_ip << std::endl;
 
         int num;
         if (charArrayToInt(buffer, num)) {
             bool ans = isEven(num);
             if (ans) {
-                strncpy(buffer, "Even", sizeof(buffer));
+                strncpy(buffer.data(), "Even", buffer.size());
             } else {
-                strncpy(buffer, "Odd", sizeof(buffer));
+                strncpy(buffer.data(), "Odd", buffer.size());
             }
-            if (sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr *) &client, len) < 0) {
-                perror("sendto() ERROR");
-                exit(5);
+            if (sendto(sock, buffer.data(), std::strlen(buffer.data()), 0, (struct sockaddr *) &client, len) < 0) {
+                throw std::runtime_error("sendto() ERROR");
             }
         } else {
-            strncpy(buffer, "Invalid Argument", sizeof(buffer));
-            if (sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr *) &client, len) < 0) {
-                perror("sendto() ERROR");
-                exit(5);
+            strncpy(buffer.data(), "Invalid Argument", buffer.size());
+            if (sendto(sock, buffer.data(), std::strlen(buffer.data()), 0, (struct sockaddr *) &client, len) < 0) {
+                throw std::runtime_error("sendto() ERROR");
             }
         }
     }
