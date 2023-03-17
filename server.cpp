@@ -12,7 +12,7 @@
 bool charArrayToInt(std::array<char, 4096> buf, int &num) {
     std::string str(buf.data());
     auto res = std::from_chars(str.data(), str.data() + str.size(), num);
-    if (res.ec == std::errc()){
+    if (res.ec == std::errc() && std::all_of(str.begin(), str.end(), ::isdigit)){
         return true;
     } else {
         return false;
@@ -29,18 +29,21 @@ int main() {
             .sin_port = htons(PORT)
     };
     if (inet_pton(AF_INET, IP, &server.sin_addr) <= 0) {
-        throw std::runtime_error("inet_pton() ERROR");
+        std::cerr << "inet_pton() ERROR" <<  std::endl;
+        exit(1);
     }
 
     const int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if ((sock) < 0) {
-        throw std::runtime_error("socket() ERROR");
+        std::cerr << "socket() ERROR" << std::endl;
+        exit(2);
     }
     std::array<char, 4096> buffer{};
 
     socklen_t len = sizeof(server);
     if (bind(sock, (struct sockaddr *) &server, len) < 0) {
-        throw std::runtime_error("bind() ERROR");
+        std::cerr << "bind() ERROR" << std::endl;
+        exit(3);
     }
 
     while (true) {
@@ -48,7 +51,8 @@ int main() {
         buffer.fill(0);
         std::cout << "Waiting for connection..." << std::endl;
         if (recvfrom(sock, buffer.data(), buffer.size(), 0, (struct sockaddr *) &client, &len) < 0) {
-            throw std::runtime_error("recvfrom() ERROR");
+            std::cerr << "recvfrom() ERROR" << std::endl;
+            exit(4);
         }
 
         char buffer_ip[128]{};
@@ -65,12 +69,14 @@ int main() {
                 strncpy(buffer.data(), "Odd", buffer.size());
             }
             if (sendto(sock, buffer.data(), std::strlen(buffer.data()), 0, (struct sockaddr *) &client, len) < 0) {
-                throw std::runtime_error("sendto() ERROR");
+                std::cerr << "sendto() ERROR" << std::endl;
+                exit(5);
             }
         } else {
             strncpy(buffer.data(), "Invalid Argument", buffer.size());
             if (sendto(sock, buffer.data(), std::strlen(buffer.data()), 0, (struct sockaddr *) &client, len) < 0) {
-                throw std::runtime_error("sendto() ERROR");
+                std::cerr << "sendto() ERROR" << std::endl;
+                exit(5);
             }
         }
     }
