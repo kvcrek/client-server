@@ -1,6 +1,7 @@
+
 #include <iostream>
 #include <boost/asio.hpp>
-
+#include <boost/program_options.hpp>
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
@@ -28,7 +29,7 @@ public:
                     if (!ec) {
                         do_write();
                     }
-                    std::cout << "Message from client" << buf.data() << std::endl;
+                    std::cout << "Message from client: " << buf.data() << std::endl;
                 });
     }
 
@@ -52,8 +53,8 @@ private:
 
 class Server {
 public:
-    explicit Server(boost::asio::io_service &io_service)
-            : acceptor_(io_service, tcp::endpoint(boost::asio::ip::address::from_string(SERVER_IP), SERVER_PORT)) {
+    explicit Server(boost::asio::io_service &io_service, const std::string &ip = SERVER_IP, int port = SERVER_PORT)
+            : acceptor_(io_service, tcp::endpoint(boost::asio::ip::address::from_string(ip), port)) {
         do_accept();
     }
 
@@ -71,12 +72,36 @@ private:
     tcp::acceptor acceptor_;
 };
 
-int main() {
+int main(int argc, char *argv[]) {
     try {
+        std::string ip;
+        int port;
+        boost::program_options::options_description desc("Options");
+        desc.add_options()
+                ("help,h", "This help message")
+                ("ip,i", boost::program_options::value<std::string>(&ip)->default_value(SERVER_IP), "Server ip address")
+                ("port,p", boost::program_options::value<int>(&port)->default_value(SERVER_PORT), "Server port");
+
+        boost::program_options::variables_map vm;
+        boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+        boost::program_options::notify(vm);
+        if (vm.count("help")) {
+            std::cout << desc << std::endl;
+            return 0;
+        }
+
         boost::asio::io_service ios;
-        Server server(ios);
-        ios.run();
-    } catch (const std::exception &e) {
+        Server server(ios, ip, port);
+        while (true) {
+            try {
+                ios.run();
+                break;
+            } catch (std::exception &e) {
+                std::cerr << e.what() << std::endl;
+            }
+        }
+    }
+    catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
     }
 
